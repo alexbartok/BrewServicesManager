@@ -161,7 +161,6 @@ echo $PATH
 BrewServicesManager searches for Homebrew in:
 - `/opt/homebrew/bin/brew` (Apple Silicon)
 - `/usr/local/bin/brew` (Intel)
-- `/home/linuxbrew/.linuxbrew/bin/brew` (Linux, if applicable)
 
 </details>
 
