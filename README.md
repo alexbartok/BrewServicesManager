@@ -52,7 +52,7 @@ A macOS menu bar app for managing Homebrew services. Start, stop, and restart se
 
 ### Option 1: Download Pre-built Release
 
-1. Download the latest `.dmg` from the [Releases](https://github.com/yourusername/BrewServicesManager/releases) page
+1. Download the latest `.dmg` from the [Releases](https://github.com/validatedev/BrewServicesManager/releases) page
 2. Open the DMG and drag **BrewServicesManager** to your Applications folder
 3. Launch the app from Applications or Spotlight
 
@@ -60,7 +60,7 @@ A macOS menu bar app for managing Homebrew services. Start, stop, and restart se
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/BrewServicesManager.git
+   git clone https://github.com/validatedev/BrewServicesManager.git
    cd BrewServicesManager
    ```
 
