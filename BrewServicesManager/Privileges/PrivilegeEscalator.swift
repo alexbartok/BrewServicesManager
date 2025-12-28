@@ -4,11 +4,12 @@
 //
 
 import Foundation
+import AppKit
 import OSLog
 
 /// Provides privilege escalation for running commands as root.
 enum PrivilegeEscalator {
-    
+
     private static let logger = Logger(subsystem: "BrewServicesManager", category: "PrivilegeEscalator")
     
     /// Runs a command with administrator privileges using osascript.
@@ -50,10 +51,16 @@ enum PrivilegeEscalator {
         let commandString = commandParts.joined(separator: " ")
         
         logger.info("Running with privileges: \(commandString)")
-        
+
+        // Activate the app to ensure the authentication dialog can receive input
+        // This prevents the MenuBarExtra from interfering with the system auth dialog
+        await MainActor.run {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
         // Use osascript to run with admin privileges
         let script = "do shell script \"\(escapeForAppleScript(commandString))\" with administrator privileges"
-        
+
         let osascriptURL = URL(filePath: "/usr/bin/osascript")
         let result = try await CommandExecutor.run(
             osascriptURL,
