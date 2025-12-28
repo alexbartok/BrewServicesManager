@@ -9,12 +9,14 @@ import SwiftUI
 struct BrewServicesManagerApp: App {
     @State private var servicesStore = ServicesStore()
     @State private var appSettings = AppSettings()
-    
+    @State private var serviceLinksStore = ServiceLinksStore()
+
     var body: some Scene {
         MenuBarExtra {
             MenuBarRootView()
                 .environment(servicesStore)
                 .environment(appSettings)
+                .environment(serviceLinksStore)
         } label: {
             Label("Brew Services Manager", systemImage: iconName)
                 .labelStyle(.iconOnly)

@@ -6,6 +6,7 @@ struct MainMenuServicesSectionView: View {
 
     let onServiceInfo: (BrewServiceListEntry) -> Void
     let onStopWithOptions: (BrewServiceListEntry) -> Void
+    let onManageLinks: (BrewServiceListEntry) -> Void
 
     var body: some View {
         Group {
@@ -92,6 +93,9 @@ struct MainMenuServicesSectionView: View {
                                 },
                                 onStopWithOptions: {
                                     onStopWithOptions(service)
+                                },
+                                onManageLinks: {
+                                    onManageLinks(service)
                                 }
                             )
                             .padding(.horizontal)
