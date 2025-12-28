@@ -17,12 +17,12 @@ struct ServiceActionsPopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: .zero) {
             // Service info header
-            VStack(alignment: .leading, spacing: LayoutConstants.tightSpacing) {
+            VStack(alignment: .leading, spacing: LayoutConstants.compactSpacing) {
                 Text(service.displayName)
                     .font(.callout)
                     .lineLimit(1)
 
-                HStack {
+                HStack(spacing: LayoutConstants.tightSpacing) {
                     StatusIndicator(status: service.status)
                         .frame(width: LayoutConstants.menuRowIconWidth)
 
@@ -40,7 +40,7 @@ struct ServiceActionsPopoverView: View {
                 .font(.caption2)
 
                 if let operation {
-                    HStack {
+                    HStack(spacing: LayoutConstants.tightSpacing) {
                         switch operation.status {
                         case .idle, .succeeded:
                             EmptyView()
