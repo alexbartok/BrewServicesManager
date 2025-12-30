@@ -13,6 +13,7 @@ struct MainMenuContentView: View {
     let onSettings: () -> Void
     let onServiceInfo: (BrewServiceListEntry) -> Void
     let onStopWithOptions: (BrewServiceListEntry) -> Void
+    let onManageLinks: (BrewServiceListEntry) -> Void
     let onGlobalAction: (GlobalActionType) -> Void
     
     var body: some View {
@@ -24,7 +25,8 @@ struct MainMenuContentView: View {
             // Services section
             MainMenuServicesSectionView(
                 onServiceInfo: onServiceInfo,
-                onStopWithOptions: onStopWithOptions
+                onStopWithOptions: onStopWithOptions,
+                onManageLinks: onManageLinks
             )
             
             Divider()

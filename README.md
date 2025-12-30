@@ -34,6 +34,8 @@ A macOS menu bar app for managing Homebrew services. Start, stop, and restart se
 - **Homebrew Integration** — Manage all `brew services` from the menu bar
 - **Real-time Status** — View service status at a glance
 - **Quick Actions** — Start, stop, and restart services instantly
+- **Port Detection** — Automatically detect and display listening ports for running services
+- **Service Links** — Configure custom URLs for quick access to service web interfaces
 - **System Domain Support** — Manage both user and system-level services with privilege escalation
 - **Auto-refresh** — Configurable refresh interval
 - **Debug Mode** — Verbose output for troubleshooting
@@ -69,7 +71,13 @@ A macOS menu bar app for managing Homebrew services. Start, stop, and restart se
    open BrewServicesManager.xcodeproj
    ```
 
-3. Build and run (⌘R) or archive for distribution (Product → Archive)
+3. **Configure Code Signing** (first time only):
+   - Select the **BrewServicesManager** project in the navigator
+   - Select the **BrewServicesManager** target
+   - Go to **Signing & Capabilities** tab
+   - Select your **Team** from the dropdown (requires Apple Developer account)
+
+4. Build and run (⌘R) or archive for distribution (Product → Archive)
 
 ---
 
@@ -83,9 +91,39 @@ A macOS menu bar app for managing Homebrew services. Start, stop, and restart se
 
 3. **Manage Services** — Hover over a service to reveal quick actions:
    - **▶️ Start** — Start a stopped service
-   - **⏹️ Stop** — Stop a running service  
+   - **⏹️ Stop** — Stop a running service
    - **🔄 Restart** — Restart a running service
    - **ℹ️ Info** — View detailed service information
+
+### Port Detection
+
+BrewServicesManager automatically detects listening ports for running services:
+
+- **Automatic Detection** — Ports are detected from the main process and all child processes
+- **Quick View** — See the first 3 ports in the service actions popover (e.g., "8384, 22000")
+- **Detailed View** — Click "View Info" to see all ports with protocol information (TCP/UDP)
+- **Works with Complex Services** — Detects ports from services that spawn worker processes (like Syncthing, nginx)
+
+Port detection happens automatically when you view service information. No configuration needed!
+
+### Service Links
+
+Add custom URLs to quickly access service web interfaces:
+
+1. **Click the three-dots menu** on any service
+2. **Select "Manage Links..."** to open the link management interface
+3. **Add a link:**
+   - Click on an auto-suggested URL (based on detected ports), or
+   - Click "Add Custom Link" to enter any URL manually
+   - Optionally add a custom label (e.g., "Admin Panel", "Metrics")
+4. **Access your links** — They appear as clickable icons next to the service name
+
+**Examples:**
+- Syncthing → `http://localhost:8384` (Web UI)
+- Local API → `http://localhost:3000` (Development server)
+- nginx → `http://localhost:80` (Web server)
+
+Links are saved automatically and persist across app restarts.
 
 ### Service Domains
 
@@ -126,6 +164,18 @@ Access settings via the ⚙️ **Settings** menu item:
 - Xcode 26.0 or later
 - macOS 15.0 or later (for running)
 - Homebrew (for testing service management)
+- Apple Developer account (free or paid, for code signing)
+
+### Code Signing Setup
+
+Before building, you need to configure code signing:
+
+1. Open the project in Xcode
+2. Select **BrewServicesManager** project → **BrewServicesManager** target
+3. Go to **Signing & Capabilities**
+4. Select your team from the dropdown
+
+The project does not include a hardcoded development team, allowing each contributor to use their own Apple Developer account.
 
 ### Build Commands
 
@@ -174,6 +224,32 @@ BrewServicesManager searches for Homebrew in:
    ```bash
    brew services info <service-name>
    ```
+
+</details>
+
+<details>
+<summary><strong>Port detection not showing any ports</strong></summary>
+
+Port detection only works for **running** services. Ensure:
+1. The service is actually running (status shows "started")
+2. The service is listening on TCP/UDP ports
+3. You have the necessary permissions to run `lsof`
+
+To verify manually:
+```bash
+# Check if service is listening
+lsof -nP -iTCP -sTCP:LISTEN | grep <service-name>
+```
+
+</details>
+
+<details>
+<summary><strong>System authentication dialog appears but can't be clicked</strong></summary>
+
+This issue has been fixed in recent versions. If you encounter this:
+1. Update to the latest version of BrewServicesManager
+2. The authentication dialog should now accept mouse input properly
+3. If issues persist, you can still use keyboard navigation (Tab to move between fields, Space/Enter to click buttons)
 
 </details>
 
