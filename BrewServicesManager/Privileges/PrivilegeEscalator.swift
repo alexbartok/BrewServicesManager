@@ -56,51 +56,47 @@ enum PrivilegeEscalator {
         // This gives us better control over dialog presentation
         let script = "do shell script \"\(escapeForAppleScript(commandString))\" with administrator privileges"
 
-        return try await withCheckedThrowingContinuation { continuation in
-            // Run on main actor to ensure proper dialog presentation
-            Task { @MainActor in
-                guard let appleScript = NSAppleScript(source: script) else {
-                    logger.error("Failed to create AppleScript")
-                    continuation.resume(throwing: AppError.cancelled)
-                    return
-                }
-
-                var error: NSDictionary?
-                let output = appleScript.executeAndReturnError(&error)
-
-                if let error = error {
-                    let errorCode = error["NSAppleScriptErrorNumber"] as? Int ?? -1
-                    let errorMessage = error["NSAppleScriptErrorMessage"] as? String ?? "Unknown error"
-
-                    if errorCode == -128 {
-                        logger.info("User cancelled authorization")
-                        continuation.resume(throwing: AppError.cancelled)
-                    } else {
-                        logger.error("AppleScript failed: \(errorMessage) (code: \(errorCode))")
-                        continuation.resume(returning: CommandResult(
-                            executablePath: executablePath,
-                            arguments: arguments,
-                            stdout: "",
-                            stderr: errorMessage,
-                            exitCode: Int32(errorCode),
-                            wasCancelled: false,
-                            duration: .zero
-                        ))
-                    }
-                } else {
-                    let outputString = output.stringValue ?? ""
-                    logger.info("Privileged command completed successfully")
-                    continuation.resume(returning: CommandResult(
-                        executablePath: executablePath,
-                        arguments: arguments,
-                        stdout: outputString,
-                        stderr: "",
-                        exitCode: 0,
-                        wasCancelled: false,
-                        duration: .zero
-                    ))
-                }
+        return try await MainActor.run {
+            guard let appleScript = NSAppleScript(source: script) else {
+                logger.error("Failed to create AppleScript")
+                throw AppError.cancelled
             }
+
+            var error: NSDictionary?
+            let output = appleScript.executeAndReturnError(&error)
+
+            if let error = error {
+                let errorCode = error["NSAppleScriptErrorNumber"] as? Int ?? -1
+                let errorMessage = error["NSAppleScriptErrorMessage"] as? String ?? "Unknown error"
+
+                if errorCode == -128 {
+                    logger.info("User cancelled authorization")
+                    throw AppError.cancelled
+                }
+
+                logger.error("AppleScript failed: \(errorMessage) (code: \(errorCode))")
+                return CommandResult(
+                    executablePath: executablePath,
+                    arguments: arguments,
+                    stdout: "",
+                    stderr: errorMessage,
+                    exitCode: Int32(errorCode),
+                    wasCancelled: false,
+                    duration: .zero
+                )
+            }
+
+            let outputString = output.stringValue ?? ""
+            logger.info("Privileged command completed successfully")
+            return CommandResult(
+                executablePath: executablePath,
+                arguments: arguments,
+                stdout: outputString,
+                stderr: "",
+                exitCode: 0,
+                wasCancelled: false,
+                duration: .zero
+            )
         }
     }
     

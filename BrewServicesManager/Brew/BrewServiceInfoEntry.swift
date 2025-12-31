@@ -75,7 +75,7 @@ struct BrewServiceInfoEntry: Codable, Identifiable, Hashable, Sendable {
 
     // MARK: - Initializer
 
-    init(
+    nonisolated init(
         name: String,
         serviceName: String?,
         status: BrewServiceStatus,
@@ -120,7 +120,7 @@ struct BrewServiceInfoEntry: Codable, Identifiable, Hashable, Sendable {
     }
 
     // Custom Decodable implementation to handle runtime-only detectedPorts
-    init(from decoder: Decoder) throws {
+    nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         name = try container.decode(String.self, forKey: .name)

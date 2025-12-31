@@ -7,6 +7,7 @@ import AppKit
 
 /// Provides isolated AppKit functionality for SwiftUI views.
 /// This centralizes AppKit usage to minimize framework mixing.
+@MainActor
 enum AppKitBridge {
 
     /// Copies a string to the system clipboard.

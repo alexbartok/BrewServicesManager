@@ -1,14 +1,14 @@
 import Foundation
 
 enum ServicesDiskCache {
-    private static let cacheVersion = 2
+    nonisolated private static let cacheVersion = 2
 
-    struct CachedServices: Codable, Sendable {
+    nonisolated struct CachedServices: Codable, Sendable {
         let services: [BrewServiceListEntry]
         let lastRefresh: Date?
     }
 
-    static func load(domain: ServiceDomain) -> CachedServices? {
+    nonisolated static func load(domain: ServiceDomain) -> CachedServices? {
         let url = cacheURL(domain: domain)
 
         do {
@@ -21,7 +21,7 @@ enum ServicesDiskCache {
         }
     }
 
-    static func save(services: [BrewServiceListEntry], lastRefresh: Date?, domain: ServiceDomain) throws {
+    nonisolated static func save(services: [BrewServiceListEntry], lastRefresh: Date?, domain: ServiceDomain) throws {
         let url = cacheURL(domain: domain)
         let cached = CachedServices(services: services, lastRefresh: lastRefresh)
 
@@ -34,7 +34,7 @@ enum ServicesDiskCache {
         try data.write(to: url, options: [.atomic])
     }
 
-    private static func cacheURL(domain: ServiceDomain) -> URL {
+    nonisolated private static func cacheURL(domain: ServiceDomain) -> URL {
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         let base = applicationSupport ?? URL(fileURLWithPath: NSTemporaryDirectory())
 

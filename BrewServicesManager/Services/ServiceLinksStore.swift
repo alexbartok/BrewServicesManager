@@ -16,6 +16,7 @@ final class ServiceLinksStore {
     private(set) var linksByService: [String: [ServiceLink]] = [:]
 
     private let storageURL: URL
+    private var saveTask: Task<Void, Never>?
 
     init() {
         // Use same pattern as ServicesDiskCache
@@ -71,8 +72,11 @@ final class ServiceLinksStore {
 
     private func save() {
         let dataToSave = linksByService
+        let previousTask = saveTask
 
-        Task.detached(priority: .utility) { [storageURL, logger] in
+        saveTask = Task.detached(priority: .utility) { [dataToSave, storageURL, previousTask] in
+            _ = await previousTask?.result
+            let logger = Logger(subsystem: "BrewServicesManager", category: "ServiceLinksStore")
             do {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
