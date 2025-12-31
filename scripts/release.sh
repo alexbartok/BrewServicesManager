@@ -14,7 +14,7 @@ set -e
 # - Xcode archive exported with Developer ID signing
 # - Sparkle EdDSA private key in Keychain (from generate_keys)
 # - GitHub CLI (gh) installed and authenticated
-# - App notarized (optional but recommended)
+# - Notarization credentials stored (xcrun notarytool store-credentials)
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,16 +43,24 @@ print_usage() {
     echo "Usage: $0 <version> <app-path>"
     echo ""
     echo "Arguments:"
-    echo "  version   Version string (e.g., 1.1, 2.0)"
+    echo "  version   Version string (e.g., 1.1.0, 2.0.0)"
     echo "  app-path  Path to the exported .app bundle"
     echo ""
     echo "Example:"
-    echo "  $0 1.1 ~/Desktop/BrewServicesManager.app"
+    echo "  $0 1.1.0 ~/Desktop/BrewServicesManager.app"
     echo ""
     echo "Before running this script:"
     echo "  1. Archive in Xcode (Product > Archive)"
-    echo "  2. Distribute > Developer ID > Export"
-    echo "  3. (Recommended) Notarize the app"
+    echo "  2. Distribute App > Developer ID > Export"
+    echo ""
+    echo "The script will handle:"
+    echo "  - Notarization (optional, prompted)"
+    echo "  - DMG creation"
+    echo "  - Sparkle signing"
+    echo "  - CHANGELOG.md update"
+    echo "  - appcast.xml update"
+    echo "  - Git commit, tag, and push"
+    echo "  - GitHub release draft"
 }
 
 notarize_app() {
