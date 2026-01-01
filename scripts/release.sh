@@ -12,12 +12,20 @@ set -e
 # 5. Updates CHANGELOG.md and appcast.xml
 # 6. Commits, tags, and pushes
 # 7. Creates a GitHub release draft
+# 8. Updates Homebrew cask definition files
+# 9. Optionally submits a PR to homebrew-cask
 #
 # Prerequisites:
 # - Developer ID Application certificate in Keychain
 # - Sparkle EdDSA private key in Keychain (from generate_keys)
-# - GitHub CLI (gh) installed and authenticated
+# - Homebrew installed (for cask PR submission)
+# - GitHub CLI (gh) installed and authenticated (used by brew bump-cask-pr)
 # - Notarization credentials stored (xcrun notarytool store-credentials)
+#
+# Notes:
+# - Homebrew PR submission requires the GitHub release to be published (not draft)
+# - brew bump-cask-pr will fork homebrew-cask automatically if needed
+# - Manual PR submission is still possible using the updated cask files
 #
 # Usage: ./release.sh <version>
 # ============================================================================
@@ -332,6 +340,77 @@ EOF
     echo "Updated: $APPCAST_FILE"
 }
 
+calculate_sha256() {
+    local file_path="$1"
+
+    if [ ! -f "$file_path" ]; then
+        echo "Error: File not found: $file_path" >&2
+        return 1
+    fi
+
+    shasum -a 256 "$file_path" | awk '{print $1}'
+}
+
+update_homebrew_cask() {
+    local version="$1"
+    local dmg_path="$2"
+    local sha256_checksum
+    local cask_files=(
+        "$PROJECT_ROOT/brew-services-manager.rb"
+        "$PROJECT_ROOT/Casks/brew-services-manager.rb"
+    )
+
+    sha256_checksum=$(calculate_sha256 "$dmg_path") || return 1
+
+    for cask_file in "${cask_files[@]}"; do
+        if [ ! -f "$cask_file" ]; then
+            echo "Warning: Cask file not found: $cask_file"
+            continue
+        fi
+
+        sed -i '' "s/version \"[^\"]*\"/version \"$version\"/" "$cask_file"
+        sed -i '' "s/sha256 \"[^\"]*\"/sha256 \"$sha256_checksum\"/" "$cask_file"
+    done
+
+    echo "Updated Homebrew casks to version $version with SHA256 $sha256_checksum"
+}
+
+submit_homebrew_pr() {
+    local version="$1"
+
+    if ! command -v brew &> /dev/null; then
+        echo "Homebrew not found. Install with: https://brew.sh"
+        return 1
+    fi
+
+    if [ ! -f "$PROJECT_ROOT/brew-services-manager.rb" ]; then
+        echo "Cask file not found at $PROJECT_ROOT/brew-services-manager.rb"
+        return 1
+    fi
+
+    local audit_cask_path="$PROJECT_ROOT/Casks/brew-services-manager.rb"
+    if [ ! -f "$audit_cask_path" ]; then
+        audit_cask_path="$PROJECT_ROOT/brew-services-manager.rb"
+    fi
+
+    echo "Running Homebrew audit on $audit_cask_path..."
+    if ! brew audit --cask --online "$audit_cask_path"; then
+        echo "Homebrew audit failed for $audit_cask_path."
+        echo "You can also run: brew audit --cask --online \"$audit_cask_path\""
+        return 1
+    fi
+
+    echo "Submitting Homebrew cask PR..."
+    if ! brew bump-cask-pr brew-services-manager --version "$version"; then
+        echo "Failed to submit Homebrew PR."
+        echo "Fallback: publish the GitHub release, then run:"
+        echo "  brew bump-cask-pr brew-services-manager --version $version"
+        return 1
+    fi
+
+    echo "Homebrew cask PR submitted."
+}
+
 create_git_tag() {
     local version="$1"
     local tag="v$version"
@@ -395,6 +474,10 @@ fi
 VERSION="$1"
 BUILD_DIR="$PROJECT_ROOT/build"
 APP_PATH="$BUILD_DIR/Build/Products/Release/$APP_NAME.app"
+CASK_FILE_ROOT="$PROJECT_ROOT/brew-services-manager.rb"
+CASK_FILE_TAP="$PROJECT_ROOT/Casks/brew-services-manager.rb"
+HOMEBREW_CASK_UPDATED="no"
+HOMEBREW_PR_SUBMITTED="no"
 
 # Update version in Xcode project
 update_version "$VERSION"
@@ -488,6 +571,36 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
+read -p "Update Homebrew cask files? (y/n) " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if update_homebrew_cask "$VERSION" "$DMG_PATH"; then
+        HOMEBREW_CASK_UPDATED="yes"
+        echo ""
+        echo "The following files have been modified:"
+        git status --short "$CASK_FILE_ROOT" "$CASK_FILE_TAP" 2>/dev/null || true
+        echo ""
+        read -p "Commit Homebrew cask updates? (y/n) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git add "$CASK_FILE_ROOT" "$CASK_FILE_TAP"
+            git commit -m "chore: update Homebrew cask to $VERSION"
+        fi
+    else
+        echo "Homebrew cask update failed."
+    fi
+fi
+
+echo ""
+read -p "Submit Homebrew cask PR? (requires published GitHub release) (y/n) " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if submit_homebrew_pr "$VERSION"; then
+        HOMEBREW_PR_SUBMITTED="yes"
+    fi
+fi
+
+echo ""
 echo "============================================"
 echo "Release preparation complete!"
 echo "============================================"
@@ -496,9 +609,26 @@ echo "Files:"
 echo "  DMG: $DMG_PATH"
 echo "  Appcast: $APPCAST_FILE"
 echo "  Changelog: $CHANGELOG_FILE"
+echo "Homebrew:"
+if [[ "$HOMEBREW_CASK_UPDATED" == "yes" ]]; then
+    echo "  Cask files updated: $CASK_FILE_ROOT, $CASK_FILE_TAP"
+else
+    echo "  Cask files updated: no"
+fi
+if [[ "$HOMEBREW_PR_SUBMITTED" == "yes" ]]; then
+    echo "  PR status: Submitted"
+else
+    echo "  PR status: Pending manual submission"
+fi
 echo ""
 echo "If you skipped any steps, you may need to:"
 echo "  - Commit and push changes manually"
 echo "  - Create git tag: git tag -a v$VERSION -m 'Release $VERSION'"
 echo "  - Publish the GitHub release draft"
+if [[ "$HOMEBREW_PR_SUBMITTED" != "yes" ]]; then
+    echo ""
+    echo "If you skipped Homebrew PR submission:"
+    echo "  - Publish the GitHub release draft first"
+    echo "  - Run: brew bump-cask-pr brew-services-manager --version $VERSION"
+fi
 echo ""
