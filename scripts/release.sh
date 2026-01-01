@@ -100,7 +100,47 @@ build_app() {
         -derivedDataPath "$build_dir" \
         clean build
 
-    echo "Build complete: $build_dir/Build/Products/Release/$APP_NAME.app"
+    local app_path="$build_dir/Build/Products/Release/$APP_NAME.app"
+
+    # Re-sign Sparkle framework components for notarization
+    echo "Signing Sparkle framework for notarization..."
+    local sparkle_framework="$app_path/Contents/Frameworks/Sparkle.framework"
+
+    if [ -d "$sparkle_framework" ]; then
+        # Sign XPC services
+        codesign --force --options runtime --timestamp \
+            --sign "$CODE_SIGN_IDENTITY" \
+            "$sparkle_framework/Versions/B/XPCServices/Installer.xpc"
+
+        codesign --force --options runtime --timestamp \
+            --sign "$CODE_SIGN_IDENTITY" \
+            "$sparkle_framework/Versions/B/XPCServices/Downloader.xpc"
+
+        # Sign Autoupdate
+        codesign --force --options runtime --timestamp \
+            --sign "$CODE_SIGN_IDENTITY" \
+            "$sparkle_framework/Versions/B/Autoupdate"
+
+        # Sign Updater.app
+        codesign --force --options runtime --timestamp \
+            --sign "$CODE_SIGN_IDENTITY" \
+            "$sparkle_framework/Versions/B/Updater.app"
+
+        # Sign the framework itself
+        codesign --force --options runtime --timestamp \
+            --sign "$CODE_SIGN_IDENTITY" \
+            "$sparkle_framework"
+
+        echo "Sparkle framework signed."
+    fi
+
+    # Re-sign the main app to include the re-signed framework
+    echo "Re-signing app..."
+    codesign --force --options runtime --timestamp \
+        --sign "$CODE_SIGN_IDENTITY" \
+        "$app_path"
+
+    echo "Build complete: $app_path"
 }
 
 notarize_app() {
