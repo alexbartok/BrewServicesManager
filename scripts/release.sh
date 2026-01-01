@@ -4,17 +4,22 @@ set -e
 # ============================================================================
 # Brew Services Manager Release Script
 # ============================================================================
-# This script automates the release process:
-# 1. Creates a DMG from the exported app
-# 2. Signs it with Sparkle's EdDSA key
-# 3. Updates appcast.xml
-# 4. Creates a GitHub release draft
+# This script automates the complete release process:
+# 1. Builds the app with Developer ID signing
+# 2. Notarizes with Apple (optional)
+# 3. Creates a DMG
+# 4. Signs it with Sparkle's EdDSA key
+# 5. Updates CHANGELOG.md and appcast.xml
+# 6. Commits, tags, and pushes
+# 7. Creates a GitHub release draft
 #
 # Prerequisites:
-# - Xcode archive exported with Developer ID signing
+# - Developer ID Application certificate in Keychain
 # - Sparkle EdDSA private key in Keychain (from generate_keys)
 # - GitHub CLI (gh) installed and authenticated
 # - Notarization credentials stored (xcrun notarytool store-credentials)
+#
+# Usage: ./release.sh <version>
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +29,7 @@ CHANGELOG_FILE="$PROJECT_ROOT/CHANGELOG.md"
 APP_NAME="BrewServicesManager"
 GITHUB_REPO="validatedev/BrewServicesManager"
 NOTARIZATION_PROFILE="BrewServicesManager-Notarization"
+CODE_SIGN_IDENTITY="Developer ID Application: Mert Can Demir (UUW59LGK2E)"
 
 # Find Sparkle tools
 SPARKLE_BIN=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Sparkle/bin" -type d 2>/dev/null | head -1)
@@ -40,20 +46,17 @@ SIGN_UPDATE="$SPARKLE_BIN/sign_update"
 # ============================================================================
 
 print_usage() {
-    echo "Usage: $0 <version> <app-path>"
+    echo "Usage: $0 <version>"
     echo ""
     echo "Arguments:"
     echo "  version   Version string (e.g., 1.1.0, 2.0.0)"
-    echo "  app-path  Path to the exported .app bundle"
     echo ""
     echo "Example:"
-    echo "  $0 1.1.0 ~/Desktop/BrewServicesManager.app"
-    echo ""
-    echo "Before running this script:"
-    echo "  1. Archive in Xcode (Product > Archive)"
-    echo "  2. Distribute App > Developer ID > Export"
+    echo "  $0 1.1.0"
     echo ""
     echo "The script will handle:"
+    echo "  - Updating version in Xcode project"
+    echo "  - Building the app with Developer ID signing"
     echo "  - Notarization (optional, prompted)"
     echo "  - DMG creation"
     echo "  - Sparkle signing"
@@ -61,6 +64,43 @@ print_usage() {
     echo "  - appcast.xml update"
     echo "  - Git commit, tag, and push"
     echo "  - GitHub release draft"
+}
+
+update_version() {
+    local version="$1"
+
+    echo "Updating version to $version..."
+
+    # Update MARKETING_VERSION in project.pbxproj
+    sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $version;/g" \
+        "$PROJECT_ROOT/$APP_NAME.xcodeproj/project.pbxproj"
+
+    # Increment CURRENT_PROJECT_VERSION (build number)
+    local current_build=$(grep -m1 'CURRENT_PROJECT_VERSION = ' "$PROJECT_ROOT/$APP_NAME.xcodeproj/project.pbxproj" | grep -o '[0-9]*')
+    local new_build=$((current_build + 1))
+
+    sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $new_build;/g" \
+        "$PROJECT_ROOT/$APP_NAME.xcodeproj/project.pbxproj"
+
+    echo "Version: $version (build $new_build)"
+}
+
+build_app() {
+    echo "Building app with Developer ID signing..."
+
+    local build_dir="$PROJECT_ROOT/build"
+
+    xcodebuild -project "$PROJECT_ROOT/$APP_NAME.xcodeproj" \
+        -scheme "$APP_NAME" \
+        -configuration Release \
+        CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+        CODE_SIGN_STYLE=Manual \
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+        OTHER_CODE_SIGN_FLAGS="--timestamp" \
+        -derivedDataPath "$build_dir" \
+        clean build
+
+    echo "Build complete: $build_dir/Build/Products/Release/$APP_NAME.app"
 }
 
 notarize_app() {
@@ -307,22 +347,24 @@ $changelog
 # Main
 # ============================================================================
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
     print_usage
     exit 1
 fi
 
 VERSION="$1"
-APP_PATH="$2"
+BUILD_DIR="$PROJECT_ROOT/build"
+APP_PATH="$BUILD_DIR/Build/Products/Release/$APP_NAME.app"
 
-# Validate inputs
+# Update version in Xcode project
+update_version "$VERSION"
+
+# Build the app
+build_app
+
+# Validate build output
 if [ ! -d "$APP_PATH" ]; then
-    echo "Error: App not found at: $APP_PATH"
-    exit 1
-fi
-
-if [[ ! "$APP_PATH" == *.app ]]; then
-    echo "Error: Path must be a .app bundle"
+    echo "Error: Build failed. App not found at: $APP_PATH"
     exit 1
 fi
 
@@ -370,7 +412,7 @@ update_appcast "$VERSION" "$BUNDLE_VERSION" "$DMG_URL" "$SIGNATURE" "$FILE_SIZE"
 # Commit and tag
 echo ""
 echo "The following files have been modified:"
-git status --short "$APPCAST_FILE" "$CHANGELOG_FILE" 2>/dev/null || true
+git status --short "$APPCAST_FILE" "$CHANGELOG_FILE" "$PROJECT_ROOT/$APP_NAME.xcodeproj/project.pbxproj" 2>/dev/null || true
 echo ""
 read -p "Commit release changes and create tag v$VERSION? (y/n) " -n 1 -r
 echo ""
@@ -378,6 +420,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Stage release files
     git add "$APPCAST_FILE"
     [ -f "$CHANGELOG_FILE" ] && git add "$CHANGELOG_FILE"
+    git add "$PROJECT_ROOT/$APP_NAME.xcodeproj/project.pbxproj"
 
     # Commit
     git commit -m "chore: release $VERSION"
