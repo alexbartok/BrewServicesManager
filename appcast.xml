@@ -6,20 +6,18 @@
     <description>Most recent updates to Brew Services Manager</description>
     <language>en</language>
 
-    <!-- Example release entry (uncomment and update for each release):
     <item>
-      <title>Version 1.1</title>
+      <title>Version 1.1.0</title>
       <sparkle:version>2</sparkle:version>
-      <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Wed, 01 Jan 2026 12:00:00 +0000</pubDate>
+      <pubDate>Wed, 01 Jan 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://github.com/validatedev/BrewServicesManager/releases/download/v1.1/BrewServicesManager-1.1.dmg"
-        sparkle:edSignature="PASTE_SIGNATURE_FROM_SIGN_UPDATE_TOOL"
-        length="FILE_SIZE_IN_BYTES"
+        url="https://github.com/validatedev/BrewServicesManager/releases/download/v1.1.0/BrewServicesManager-1.1.0.dmg"
+        sparkle:edSignature="IRX1Z8z+2bqc6mj2RXq7trzJH65EMQ1TN0YckoaiPI6cP+8FrRJ4r8B9th+crVJXmYpFhbEElXX96Xn5TndBAg=="
+        length="4164486"
         type="application/octet-stream" />
     </item>
-    -->
 
   </channel>
 </rss>

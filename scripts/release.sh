@@ -303,30 +303,30 @@ update_appcast() {
 
     echo "Updating appcast.xml..."
 
-    # Create new item entry
-    local new_item="    <item>
+    local temp_file=$(mktemp)
+
+    # Read file and insert new item before </channel>
+    while IFS= read -r line; do
+        if [[ "$line" == *"</channel>"* ]]; then
+            cat >> "$temp_file" << EOF
+    <item>
       <title>Version $version</title>
       <sparkle:version>$bundle_version</sparkle:version>
       <sparkle:shortVersionString>$version</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <pubDate>$pub_date</pubDate>
       <enclosure
-        url=\"$dmg_url\"
-        sparkle:edSignature=\"$signature\"
-        length=\"$file_size\"
-        type=\"application/octet-stream\" />
-    </item>"
+        url="$dmg_url"
+        sparkle:edSignature="$signature"
+        length="$file_size"
+        type="application/octet-stream" />
+    </item>
 
-    # Insert before closing </channel> tag
-    # Use a temp file for sed compatibility
-    local temp_file=$(mktemp)
-    awk -v item="$new_item" '
-    /<\/channel>/ {
-        print item
-        print ""
-    }
-    { print }
-    ' "$APPCAST_FILE" > "$temp_file"
+EOF
+        fi
+        echo "$line" >> "$temp_file"
+    done < "$APPCAST_FILE"
+
     mv "$temp_file" "$APPCAST_FILE"
 
     echo "Updated: $APPCAST_FILE"
