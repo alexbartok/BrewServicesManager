@@ -200,15 +200,33 @@ create_dmg() {
 sign_update() {
     local dmg_path="$1"
 
-    echo "Signing update with EdDSA..."
+    echo "Signing update with EdDSA..." >&2
     local signature=$("$SIGN_UPDATE" "$dmg_path" 2>&1 | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
 
     if [ -z "$signature" ]; then
-        # Try alternate output format
-        signature=$("$SIGN_UPDATE" "$dmg_path" 2>&1 | tail -1)
+        # Try alternate output format - extract just the base64 signature
+        signature=$("$SIGN_UPDATE" "$dmg_path" 2>&1 | grep -oE '[A-Za-z0-9+/]{86,88}==?')
     fi
 
     echo "$signature"
+}
+
+validate_signature() {
+    local signature="$1"
+
+    # EdDSA signatures are 64 bytes = 88 base64 characters with padding
+    if [[ ! "$signature" =~ ^[A-Za-z0-9+/]{86,88}==?$ ]]; then
+        echo "Error: Invalid signature format: $signature" >&2
+        return 1
+    fi
+
+    # Check for newlines or other corruption
+    if [[ "$signature" == *$'\n'* ]]; then
+        echo "Error: Signature contains newline characters" >&2
+        return 1
+    fi
+
+    return 0
 }
 
 get_file_size() {
@@ -510,6 +528,14 @@ if [ -z "$SIGNATURE" ]; then
     echo "Error: Failed to sign update"
     exit 1
 fi
+
+# Validate signature format
+if ! validate_signature "$SIGNATURE"; then
+    echo "Error: Generated signature is invalid"
+    echo "Signature: $SIGNATURE"
+    exit 1
+fi
+
 echo "Signature: ${SIGNATURE:0:20}..."
 
 # Get file size
