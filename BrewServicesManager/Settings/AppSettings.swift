@@ -151,10 +151,9 @@ final class AppSettings {
                 launchAtLoginError = .unregistrationFailed(error.localizedDescription)
             }
 
-            // Revert the setting to match actual state
+            // Revert the stored setting to match actual state without triggering observers
             let actualEnabled = service.status == .enabled
             defaults.set(actualEnabled, forKey: Keys.launchAtLogin)
-            launchAtLogin = actualEnabled
         }
 
         // Check if approval is required
