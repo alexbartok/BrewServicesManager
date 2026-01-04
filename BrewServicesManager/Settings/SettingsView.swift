@@ -90,7 +90,7 @@ struct SettingsView: View {
 
                                 Button("Open System Settings", systemImage: "gearshape") {
                                     if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") {
-                                        NSWorkspace.shared.open(url)
+                                        AppKitBridge.openURL(url)
                                     }
                                 }
                                 .font(.caption)

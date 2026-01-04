@@ -107,16 +107,15 @@ final class AppSettings {
         case .enabled:
             // System says enabled, update our stored value if different
             if !launchAtLogin {
-                // Update without triggering didSet (to avoid recursion)
+                // Update persisted value only, to avoid triggering didSet and side effects
                 defaults.set(true, forKey: Keys.launchAtLogin)
-                launchAtLogin = true
             }
         case .notRegistered, .notFound:
             // System says not registered or not found - both mean the login item is not active
             // .notFound can occur when running from Xcode or if the app hasn't been registered yet
             if launchAtLogin {
+                // Update persisted value only, to avoid triggering didSet and side effects
                 defaults.set(false, forKey: Keys.launchAtLogin)
-                launchAtLogin = false
             }
         case .requiresApproval:
             // User needs to approve in System Settings
